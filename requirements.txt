@@ -1,0 +1,7 @@
+numpy==2.0.2
+pandas==2.3.3
+scikit-learn==1.6.1
+seaborn==0.13.2
+matplotlib==3.9.4
+kagglehub==0.3.13
+ipykernel==6.31.0
