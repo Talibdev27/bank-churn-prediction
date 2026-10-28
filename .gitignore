@@ -3,3 +3,7 @@
 kaggle.json
 .ipynb_checkpoints/
 .DS_Store
+*.joblib
+__pycache__/
+.pytest_cache/
+.ruff_cache/
