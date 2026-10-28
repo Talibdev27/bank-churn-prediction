@@ -1,53 +1,105 @@
 # Bank Churn Prediction
 
-Predicting which bank customers will leave (`Exited = 1`) for the Kaggle competition
+[![CI](https://github.com/Talibdev27/bank-churn-prediction/actions/workflows/ci.yml/badge.svg)](https://github.com/Talibdev27/bank-churn-prediction/actions/workflows/ci.yml)
+
+Predicting which bank customers will leave, using data from the Kaggle competition
 [Binary Classification with a Bank Churn Dataset](https://www.kaggle.com/competitions/binaryclassificationwithabankchurndataset).
-The metric is ROC-AUC.
+The competition scores models by ROC-AUC.
 
-Everything is in [`churn.ipynb`](churn.ipynb).
+**Headline:** if the bank contacts the riskiest 20% of customers, it reaches **73% of the customers who will churn**.
+That is 3.7× better than picking customers at random. The best model scores 0.930 cross-validated AUC.
 
-## Data
-- 15,000 training rows and 10,000 test rows, with no missing values
-- About 20% of customers churn
-- Features: credit score, geography, gender, age, tenure, balance, number of products, card ownership, activity, salary
+## Results
 
-## Key findings from EDA
-- **Number of products** is the strongest signal, and its effect is U-shaped: 2 products → 4% churn, 1 → 38%, 3+ → 85–100%.
-- **Germany** churns at 41%, compared with about 15% for France and Spain.
-- **Women** churn at 28% vs 14% for men. **Inactive members** and **older customers** churn more.
-- 65% of customers have a **zero balance**.
-- `CustomerId` repeats (6,306 unique ids across 15,000 rows), but repeated ids almost never share age or surname.
-  This is a synthetic artifact, not real repeat customers. CV grouped by `CustomerId` gives the same score, so there is no leakage.
-
-## Approach
-- Engineered features: `ZeroBalance`, `IsSenior`, `AgeBin`, `ActiveByProducts`, `BalancePerProduct`
-- All encoding happens inside scikit-learn `Pipeline`s. Each fold's encoding is fit on its training data only,
-  and train and test always end up with the same columns.
-- Validation: 5-fold `StratifiedKFold` (seed 42)
-
-## Results (5-fold CV ROC-AUC)
+5-fold stratified cross-validation, ROC-AUC:
 
 | Model | Features | AUC |
 |---|---|---|
-| Logistic Regression | raw, one-hot geography/gender | 0.8829 |
-| Logistic Regression | engineered, one-hot `NumOfProducts` | **0.9275 ± 0.0035** |
-| HistGradientBoosting | raw | 0.9311 |
-| HistGradientBoosting | engineered, native categoricals | 0.9299 ± 0.0038 |
+| Logistic regression (baseline) | raw columns | 0.8829 |
+| Logistic regression | engineered features + one-hot `NumOfProducts` | 0.9275 ± 0.0035 |
+| **HistGradientBoosting** | engineered features, native categoricals | **0.9301 ± 0.0026** |
 
-The engineered features close most of the gap between the linear model and the boosted model.
-For boosting they make no measurable difference, because trees already find these splits on their own.
+The engineered features close most of the gap between the linear model and boosting.
+For boosting they barely matter, because trees find the same splits on their own.
 
-## How to run
-```bash
-python -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
+### Business view
+
+The table and chart use out-of-fold predictions: each customer is scored by a model that never saw them during training.
+
+| Riskiest customers contacted | Churners reached | Precision | Lift vs random |
+|---|---|---|---|
+| 10% | 45% | 90% | 4.5× |
+| 20% | 73% | 73% | 3.7× |
+| 30% | 87% | 58% | 2.9× |
+
+<img src="reports/gains.png" width="420" alt="Cumulative gains chart">
+
+Where to set the cutoff is a business decision. A real bank would plug in its own cost per contact and the value
+of a retained customer to choose how many customers to contact.
+
+### Why customers churn
+
+Permutation importance and partial dependence, both computed on a held-out cross-validation fold:
+
+<img src="reports/importance.png" width="420" alt="Permutation importance">
+
+![Partial dependence](reports/partial_dependence.png)
+
+- **Number of products** matters most, and its effect is U-shaped. Customers with 2 products are by far the safest,
+  and customers with 3 or more almost always leave.
+- **Age** is next. Risk climbs from the mid-30s and peaks around 50–60.
+- **Inactive members** churn more. Germany's raw 41% churn rate shrinks to a small bump once age, balance and number
+  of products are accounted for, so the "Germany effect" largely comes from who the German customers are.
+- Credit score, tenure, salary and card ownership add almost nothing.
+
+### No leakage through `CustomerId`
+
+`CustomerId` repeats (6,306 unique ids across 15,000 rows), but 98% of repeated ids have different ages and
+99.9% have different surnames. The id is an artifact of the synthetic data, not a real repeat customer.
+Cross-validation that keeps each id in a single fold gives the same AUC, so plain stratified CV is safe.
+
+## Project layout
+
+```
+src/churn/
+  data.py       # download/load the Kaggle data
+  features.py   # feature engineering (add_features)
+  model.py      # logistic regression and HistGB pipelines
+  train.py      # cross-validate, pick the best model, write metrics + submission
+  report.py     # gains, permutation importance and partial dependence charts
+notebooks/
+  churn.ipynb   # EDA and the modeling story; imports from churn.*
+reports/        # metrics.json, gains.json and charts (committed)
+tests/          # pytest suite on synthetic data, no network needed
 ```
 
-Put your Kaggle API token in `~/.kaggle/kaggle.json` and accept the competition rules on Kaggle.
-Then run `churn.ipynb`. The notebook downloads the data with `kagglehub` and writes `submission.csv`.
+All encoding happens inside scikit-learn pipelines. Each pipeline takes the raw columns, engineers its features and
+fits its encoders on the training folds only. Train and test always end up with the same columns, and a category
+the model never saw doesn't break it.
+
+## How to run
+
+Requires [uv](https://docs.astral.sh/uv/). Put your Kaggle API token in `~/.kaggle/kaggle.json` and accept the
+competition rules on Kaggle.
+
+```bash
+uv sync
+uv run python -m churn.train    # CV both models, write reports/metrics.json and submission.csv
+uv run python -m churn.report   # draw the charts in reports/
+uv run pytest                   # tests
+```
+
+Options: `python -m churn.train --model hgb --folds 10 --data-dir path/to/csvs`. Run with `--help` for the full list.
+
+Without uv, run `pip install -e .` inside a Python 3.12+ virtual environment.
 
 ## Next steps
+
 - Tune HistGB (`learning_rate`, `max_leaf_nodes`, `l2_regularization`)
 - Try LightGBM and CatBoost, then blend models
+- SHAP values for per-customer explanations
 - Compare CV scores against the public leaderboard
+
+## License
+
+[MIT](LICENSE)
