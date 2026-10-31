@@ -21,6 +21,21 @@ def test_add_features_values():
     assert out["BalancePerProduct"].tolist() == [0.0, 50_000.0, 50_000.0]
 
 
+def test_inactive_senior_needs_both_age_and_inactivity():
+    df = pd.DataFrame(
+        {
+            "Age": [55.0, 55.0, 30.0, 50.0],
+            "Balance": [0.0, 0.0, 0.0, 0.0],
+            "NumOfProducts": [1.0, 1.0, 1.0, 1.0],
+            "IsActiveMember": [0.0, 1.0, 0.0, 0.0],
+        }
+    )
+    out = add_features(df)
+
+    # old + inactive, old but active, inactive but young, exactly 50 + inactive
+    assert out["InactiveSenior"].tolist() == [1, 0, 0, 1]
+
+
 def test_add_features_does_not_modify_input():
     df = pd.DataFrame(
         {"Age": [30.0], "Balance": [0.0], "NumOfProducts": [1.0], "IsActiveMember": [0.0]}
