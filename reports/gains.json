@@ -1,20 +1,20 @@
 [
   {
     "contacted":0.1,
-    "churners_caught":0.451,
-    "precision":0.895,
-    "lift":4.51
+    "churners_caught":0.449,
+    "precision":0.892,
+    "lift":4.49
   },
   {
     "contacted":0.2,
-    "churners_caught":0.733,
-    "precision":0.727,
-    "lift":3.66
+    "churners_caught":0.726,
+    "precision":0.72,
+    "lift":3.63
   },
   {
     "contacted":0.3,
-    "churners_caught":0.87,
-    "precision":0.576,
-    "lift":2.9
+    "churners_caught":0.868,
+    "precision":0.574,
+    "lift":2.89
   }
 ]

@@ -7,7 +7,7 @@ Predicting which bank customers will leave, using data from the Kaggle competiti
 The competition scores models by ROC-AUC.
 
 **Headline:** if the bank contacts the riskiest 20% of customers, it reaches **73% of the customers who will churn**.
-That is 3.7× better than picking customers at random. The best model scores 0.930 cross-validated AUC.
+That is 3.6× better than picking customers at random. The best model scores 0.930 cross-validated AUC.
 
 ## Results
 
@@ -16,8 +16,8 @@ That is 3.7× better than picking customers at random. The best model scores 0.9
 | Model | Features | AUC |
 |---|---|---|
 | Logistic regression (baseline) | raw columns | 0.8829 |
-| Logistic regression | engineered features + one-hot `NumOfProducts` | 0.9275 ± 0.0035 |
-| **HistGradientBoosting** | engineered features, native categoricals | **0.9301 ± 0.0026** |
+| Logistic regression | engineered features + one-hot `NumOfProducts` | 0.9285 ± 0.0032 |
+| **HistGradientBoosting** | engineered features, native categoricals | **0.9298 ± 0.0020** |
 
 The engineered features close most of the gap between the linear model and boosting.
 For boosting they barely matter, because trees find the same splits on their own.
@@ -28,9 +28,9 @@ The table and chart use out-of-fold predictions: each customer is scored by a mo
 
 | Riskiest customers contacted | Churners reached | Precision | Lift vs random |
 |---|---|---|---|
-| 10% | 45% | 90% | 4.5× |
-| 20% | 73% | 73% | 3.7× |
-| 30% | 87% | 58% | 2.9× |
+| 10% | 45% | 89% | 4.5× |
+| 20% | 73% | 72% | 3.6× |
+| 30% | 87% | 57% | 2.9× |
 
 <img src="reports/gains.png" width="420" alt="Cumulative gains chart">
 
